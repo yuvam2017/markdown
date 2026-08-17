@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Markdown → Official PDF</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+  :root{
+    --navy-900:#132849;
+    --navy-800:#1a3358;
+    --navy-700:#22406b;
+    --paper:#ffffff;
+    --ink:#1b1f27;
+    --muted:#5b6472;
+    --hair:#d8dde5;
+    --stripe:#f4f6f9;
+    --green-bg:#e5f6ea; --green-fg:#15803d;
+    --amber-bg:#fdf1de; --amber-fg:#b4650a;
+    --red-bg:#fbe6e6;   --red-fg:#c22626;
+    --app-bg:#0e1116;
+    --panel:#161b22;
+    --panel-2:#1d232c;
+    --edge:#2a323d;
+    --accent:#e8b64a;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;background:var(--app-bg);color:#e6e9ef;}
+
+  /* ---------- App chrome ---------- */
+  .app{display:flex;flex-direction:column;height:100vh;}
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 22px;background:var(--panel);border-bottom:1px solid var(--edge);
+    flex-wrap:wrap;gap:10px;
+  }
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand .sq{width:11px;height:11px;background:var(--accent);}
+  .brand h1{font-size:15px;letter-spacing:.04em;text-transform:uppercase;font-weight:700;margin:0;color:#f2f4f7;}
+  .brand p{margin:0;font-size:11px;color:#8b93a1;}
+  .actions{display:flex;gap:10px;align-items:center;}
+  select,button{
+    font-family:inherit;font-size:13px;border-radius:6px;border:1px solid var(--edge);
+    background:var(--panel-2);color:#e6e9ef;padding:9px 14px;cursor:pointer;
+  }
+  button.primary{
+    background:var(--navy-800);border-color:var(--navy-700);color:#fff;font-weight:600;
+    display:flex;align-items:center;gap:8px;
+  }
+  button.primary:hover{background:var(--navy-700);}
+  button.primary:disabled{opacity:.55;cursor:progress;}
+  button:not(.primary):hover{background:#242b35;}
+
+  .workspace{flex:1;display:flex;min-height:0;}
+  .pane{flex:1 1 50%;min-width:0;display:flex;flex-direction:column;}
+  .pane-head{
+    padding:9px 16px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+    color:#8b93a1;border-bottom:1px solid var(--edge);background:var(--panel);
+  }
+  #editor{
+    flex:1;resize:none;border:none;outline:none;background:var(--panel);color:#d6dae2;
+    font:13px/1.6 "SF Mono",Menlo,Consolas,monospace;padding:18px 20px;
+  }
+  .preview-scroll{
+    flex:1;overflow:auto;background:#3a3f47;padding:28px;display:flex;justify-content:center;
+  }
+  .divider{width:1px;background:var(--edge);}
+
+  /* ---------- The generated "document" look ---------- */
+  #doc{
+    width:800px;max-width:100%;background:var(--paper);color:var(--ink);
+    padding:44px 46px 56px;font-family:Arial,Helvetica,sans-serif;
+    box-shadow:0 8px 30px rgba(0,0,0,.4);
+  }
+  #doc h1{
+    font-size:29px;font-weight:800;color:var(--navy-900);margin:0 0 4px;letter-spacing:-.01em;
+  }
+  #doc .subtitle{font-size:12.5px;color:var(--muted);margin:0 0 18px;line-height:1.5;}
+  #doc .legend{
+    display:flex;gap:10px;border:1px solid var(--hair);border-radius:4px;overflow:hidden;margin:0 0 22px;
+  }
+  #doc .legend .item{
+    flex:1;padding:10px 14px;font-size:11px;line-height:1.4;color:var(--ink);
+    border-right:1px solid var(--hair);
+  }
+  #doc .legend .item:last-child{border-right:none;}
+  #doc .legend .dot{
+    display:inline-block;width:9px;height:9px;margin-right:6px;vertical-align:middle;
+  }
+  #doc .legend .item b{display:block;font-weight:700;font-size:11px;}
+  #doc .legend .confirmed .dot{background:var(--green-fg);}
+  #doc .legend .probable .dot{background:var(--amber-fg);}
+  #doc .legend .tentative .dot{background:var(--red-fg);}
+
+  #doc h2{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    background:var(--navy-900);color:#fff;font-size:14.5px;font-weight:700;
+    padding:10px 16px;margin:30px 0 0;border-radius:2px;
+  }
+  #doc h2 .n{
+    background:rgba(255,255,255,.16);border-radius:3px;padding:1px 9px;font-size:12px;margin-right:10px;
+  }
+  #doc h2::after{content:"■";font-size:10px;opacity:.85;}
+  #doc h2 + p, #doc h2 + p + p{font-size:11.5px;color:var(--muted);margin:8px 0 14px;font-style:italic;}
+
+  #doc h3{font-size:13.5px;color:var(--navy-900);margin:18px 0 6px;font-weight:700;}
+  #doc p{font-size:12.5px;line-height:1.65;margin:8px 0;}
+  #doc ul,#doc ol{font-size:12.5px;line-height:1.7;margin:8px 0;padding-left:22px;}
+  #doc a{color:var(--navy-700);}
+  #doc strong{color:var(--navy-900);}
+  #doc hr{border:none;border-top:1px solid var(--hair);margin:22px 0;}
+
+  #doc table{
+    width:100%;border-collapse:collapse;margin:10px 0 6px;font-size:11.5px;
+    border:1px solid var(--hair);break-inside:auto;
+  }
+  #doc thead th{
+    background:var(--navy-900);color:#fff;text-align:left;font-weight:700;
+    padding:9px 12px;font-size:11px;letter-spacing:.01em;
+  }
+  #doc tbody td{padding:8px 12px;border-top:1px solid var(--hair);vertical-align:top;}
+  #doc tbody tr:nth-child(even){background:var(--stripe);}
+  #doc tbody tr{break-inside:avoid;}
+
+  .badge{
+    display:inline-block;font-size:10px;font-weight:700;letter-spacing:.03em;
+    padding:3px 9px;border-radius:3px;white-space:nowrap;
+  }
+  .badge.confirmed{background:var(--green-bg);color:var(--green-fg);}
+  .badge.probable{background:var(--amber-bg);color:var(--amber-fg);}
+  .badge.tentative{background:var(--red-bg);color:var(--red-fg);}
+
+  #doc .footer{
+    margin-top:34px;padding-top:12px;border-top:1px solid var(--hair);
+    font-size:10px;color:#9aa1ab;display:flex;justify-content:space-between;
+  }
+
+  @media (max-width:840px){
+    .workspace{flex-direction:column;}
+    .divider{width:auto;height:1px;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="brand">
+      <span class="sq"></span>
+      <div>
+        <h1>Markdown → Official PDF</h1>
+        <p>Write markdown on the left, get a formatted document on the right</p>
+      </div>
+    </div>
+    <div class="actions">
+      <select id="sample">
+        <option value="">Load sample…</option>
+        <option value="calendar">Exam calendar (like the screenshot)</option>
+        <option value="blank">Blank starter</option>
+      </select>
+      <button id="downloadBtn" class="primary">⬇ Download PDF</button>
+    </div>
+  </div>
+
+  <div class="workspace">
+    <div class="pane">
+      <div class="pane-head">Markdown source</div>
+      <textarea id="editor" spellcheck="false"></textarea>
+    </div>
+    <div class="divider"></div>
+    <div class="pane">
+      <div class="pane-head">Live preview</div>
+      <div class="preview-scroll"><div id="doc"></div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------------- Markdown conventions ----------------
+# Title              -> big navy title
+> subtitle line      -> small grey subtitle under the title (right after H1)
+## Section Name       -> numbered navy header bar (auto-numbered in order)
+Table cells containing CONFIRMED / PROBABLE / TENTATIVE (any case)
+  automatically become colored status pills, and a legend is
+  auto-generated at the top from whichever statuses are used.
+--------------------------------------------------------- */
+
+const STATUS_MAP = {
+  CONFIRMED: {cls:'confirmed', label:'CONFIRMED — official dates released'},
+  PROBABLE:  {cls:'probable',  label:'PROBABLE — based on recent official cycles'},
+  TENTATIVE: {cls:'tentative', label:'TENTATIVE — dates may still shift'}
+};
+
+const editor = document.getElementById('editor');
+const doc = document.getElementById('doc');
+
+marked.setOptions({ gfm: true, breaks: false });
+
+function render(){
+  const src = editor.value;
+
+  // pull off a leading "> subtitle" line right after the first H1
+  const lines = src.split('\n');
+  let subtitle = '';
+  let firstH1Index = lines.findIndex(l => /^#\s+/.test(l));
+  if (firstH1Index !== -1 && lines[firstH1Index+1] && lines[firstH1Index+1].trim().startsWith('>')){
+    subtitle = lines[firstH1Index+1].replace(/^>\s?/, '');
+    lines.splice(firstH1Index+1, 1);
+  }
+  const md = lines.join('\n');
+
+  let html = marked.parse(md);
+
+  // wrap H1
+  let h1Done = false;
+  html = html.replace(/<h1>(.*?)<\/h1>/, (m, inner) => {
+    h1Done = true;
+    return `<h1>${inner}</h1>` + (subtitle ? `<p class="subtitle">${subtitle}</p>` : '');
+  });
+
+  // auto-number H2 section bars
+  let n = 0;
+  html = html.replace(/<h2>(.*?)<\/h2>/g, (m, inner) => {
+    n++;
+    return `<h2><span><span class="n">${n}</span>${inner}</span></h2>`;
+  });
+
+  // convert status keywords in table cells into pills
+  const found = new Set();
+  html = html.replace(/<td>(\s*)(CONFIRMED|PROBABLE|TENTATIVE)(\s*)<\/td>/gi, (m, pre, word, post) => {
+    const key = word.toUpperCase();
+    found.add(key);
+    return `<td><span class="badge ${STATUS_MAP[key].cls}">${key}</span></td>`;
+  });
+
+  // build legend if any statuses were used
+  let legend = '';
+  if (found.size){
+    const order = ['CONFIRMED','PROBABLE','TENTATIVE'].filter(k => found.has(k));
+    legend = `<div class="legend">${order.map(k => {
+      const s = STATUS_MAP[k];
+      const parts = s.label.split(' — ');
+      return `<div class="item ${s.cls}"><b><span class="dot"></span>${parts[0]}</b>${parts[1]}</div>`;
+    }).join('')}</div>`;
+  }
+
+  // insert legend right after subtitle (or after h1 if no subtitle)
+  if (legend){
+    if (subtitle){
+      html = html.replace('</p>', '</p>' + legend);
+      // only replace the first </p> which is the subtitle's — safe since it's first occurrence
+    } else {
+      html = html.replace(/<\/h1>/, '</h1>' + legend);
+    }
+  }
+
+  const today = new Date().toLocaleDateString('en-GB', {day:'numeric',month:'long',year:'numeric'});
+  html += `<div class="footer"><span>Generated with Markdown → PDF</span><span>${today}</span></div>`;
+
+  doc.innerHTML = html;
+}
+
+editor.addEventListener('input', render);
+
+document.getElementById('downloadBtn').addEventListener('click', () => {
+  const btn = document.getElementById('downloadBtn');
+  btn.disabled = true;
+  const prevText = btn.textContent;
+  btn.textContent = 'Generating…';
+
+  const opt = {
+    margin: 0,
+    filename: 'document.pdf',
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+    jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' },
+    pagebreak: { mode: ['css', 'avoid-all'] }
+  };
+
+  html2pdf().set(opt).from(doc).save().then(() => {
+    btn.disabled = false;
+    btn.textContent = prevText;
+  }).catch(() => {
+    btn.disabled = false;
+    btn.textContent = prevText;
+  });
+});
+
+const SAMPLES = {
+blank: `# Document Title
+> A short subtitle line describing this document
+
+## First Section
+
+Write your content here.
+
+## Second Section
+
+More content, tables, lists — whatever you need.
+`,
+calendar: `# 2027 Government Exam Master Calendar
+> Consolidated application & examination dates — UPSC · State PSCs · Banking · SSC · Insurance · RBI · NABARD · SEBI
+
+## UPSC — Union Public Service Commission
+
+Official 2027 annual calendar already released — the most reliable set of dates in this document.
+
+| Examination | Notification / App. starts | Last date to apply | Exam date (2027) | Status |
+|---|---|---|---|---|
+| Combined Geo-Scientist (Prelims) | 2 Sep 2026 | 22 Sep 2026 | 10 Jan 2027 | CONFIRMED |
+| Engineering Services (Prelims) | 16 Sep 2026 | 6 Oct 2026 | 31 Jan 2027 | CONFIRMED |
+| NDA & NA I | 2 Dec 2026 | 22 Dec 2026 | 11 Apr 2027 | CONFIRMED |
+| Civil Services (Prelims) — CSE | 13 Jan 2027 | 2 Feb 2027 | 23 May 2027 | CONFIRMED |
+| CAPF Assistant Commandant | 17 Feb 2027 | 9 Mar 2027 | 4 Jul 2027 | CONFIRMED |
+
+## State PSCs
+
+Dates vary by state; several boards have not yet released a firm cycle.
+
+| Examination | Notification | Exam date (est.) | Status |
+|---|---|---|---|
+| Haryana PSC — HCS | Aug 2026 | Mar 2027 | PROBABLE |
+| UPPSC — Combined State/Upper Sub. | Sep 2026 | Apr 2027 | PROBABLE |
+| Bihar PSC — 71st CCE | — | — | TENTATIVE |
+
+## Banking & Insurance
+
+| Examination | Notification | Exam date (est.) | Status |
+|---|---|---|---|
+| IBPS PO | Aug 2026 | Oct 2026 | CONFIRMED |
+| SBI Clerk | Oct 2026 | Dec 2026 | PROBABLE |
+`
+};
+
+document.getElementById('sample').addEventListener('change', (e) => {
+  const key = e.target.value;
+  if (!key) return;
+  editor.value = SAMPLES[key];
+  render();
+  e.target.value = '';
+});
+
+// initial load
+editor.value = SAMPLES.calendar;
+render();
+</script>
+</body>
+</html>
