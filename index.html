@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Markdown → Official PDF</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
   :root{
     --navy-900:#132849;
@@ -141,6 +140,34 @@
     .workspace{flex-direction:column;}
     .divider{width:auto;height:1px;}
   }
+
+  /* ---------- Print / PDF export ----------
+     Real browser pagination — no canvas rasterization, so no
+     blank pages and no background/transparency artifacts.       */
+  @page{ margin:16mm 14mm; }
+  @media print{
+    html,body{background:#fff !important;height:auto;}
+    .topbar,.pane-head,#editor,.divider{display:none !important;}
+    .workspace{display:block !important;}
+    .pane:first-child{display:none !important;}
+    .pane:last-child{display:block !important;flex:none !important;}
+    .preview-scroll{
+      display:block !important;overflow:visible !important;
+      background:#fff !important;padding:0 !important;height:auto !important;
+    }
+    #doc{
+      width:auto !important;max-width:none !important;box-shadow:none !important;
+      padding:0 !important;margin:0 !important;
+    }
+    #doc h2{background:var(--navy-900) !important;color:#fff !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    #doc thead th{background:var(--navy-900) !important;color:#fff !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    #doc tbody tr:nth-child(even){background:var(--stripe) !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .badge{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    #doc h2{break-after:avoid;}
+    #doc h3{break-after:avoid;}
+    #doc table{break-inside:auto;}
+    #doc tbody tr,#doc .legend,#doc img{break-inside:avoid;}
+  }
 </style>
 </head>
 <body>
@@ -159,7 +186,7 @@
         <option value="calendar">Exam calendar (like the screenshot)</option>
         <option value="blank">Blank starter</option>
       </select>
-      <button id="downloadBtn" class="primary">⬇ Download PDF</button>
+      <button id="downloadBtn" class="primary">⬇ Export PDF</button>
     </div>
   </div>
 
@@ -289,6 +316,15 @@ document.getElementById('downloadBtn').addEventListener('click', () => {
 
 const SAMPLES = {
 blank: `# Document Title
+> A short subtitle line describing this document
+
+## First Section
+
+Write your content here.
+
+## Second Section
+
+More content, tables, lists — whatever you need.
 `,
 calendar: `# 2027 Government Exam Master Calendar
 > Consolidated application & examination dates — UPSC · State PSCs · Banking · SSC · Insurance · RBI · NABARD · SEBI
@@ -299,7 +335,28 @@ Official 2027 annual calendar already released — the most reliable set of date
 
 | Examination | Notification / App. starts | Last date to apply | Exam date (2027) | Status |
 |---|---|---|---|---|
+| Combined Geo-Scientist (Prelims) | 2 Sep 2026 | 22 Sep 2026 | 10 Jan 2027 | CONFIRMED |
+| Engineering Services (Prelims) | 16 Sep 2026 | 6 Oct 2026 | 31 Jan 2027 | CONFIRMED |
+| NDA & NA I | 2 Dec 2026 | 22 Dec 2026 | 11 Apr 2027 | CONFIRMED |
 | Civil Services (Prelims) — CSE | 13 Jan 2027 | 2 Feb 2027 | 23 May 2027 | CONFIRMED |
+| CAPF Assistant Commandant | 17 Feb 2027 | 9 Mar 2027 | 4 Jul 2027 | CONFIRMED |
+
+## State PSCs
+
+Dates vary by state; several boards have not yet released a firm cycle.
+
+| Examination | Notification | Exam date (est.) | Status |
+|---|---|---|---|
+| Haryana PSC — HCS | Aug 2026 | Mar 2027 | PROBABLE |
+| UPPSC — Combined State/Upper Sub. | Sep 2026 | Apr 2027 | PROBABLE |
+| Bihar PSC — 71st CCE | — | — | TENTATIVE |
+
+## Banking & Insurance
+
+| Examination | Notification | Exam date (est.) | Status |
+|---|---|---|---|
+| IBPS PO | Aug 2026 | Oct 2026 | CONFIRMED |
+| SBI Clerk | Oct 2026 | Dec 2026 | PROBABLE |
 `
 };
 
